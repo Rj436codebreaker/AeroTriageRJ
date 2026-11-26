@@ -1,12 +1,14 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { API_BASE_URL } from "@/lib/api";
 import CompactPatientBar from "@/components/CompactPatientBar";
 import { buildClinicalRecommendations, saveCareOrder } from "@/lib/careOrdersStore";
-import { findPatientById } from "@/lib/directoryStore";
+import { findPatientById, loadDirectory } from "@/lib/directoryStore";
+import { getActiveHospitalSession } from "@/lib/hospitalSession";
 
 export default function DoctorDashboardPage() {
+  const [hospitalId, setHospitalId] = useState<string | undefined>(undefined);
   const [patientId, setPatientId] = useState("PT-101");
   const [patientName, setPatientName] = useState("Ramesh Kumar");
   const [age, setAge] = useState(62);
@@ -16,6 +18,23 @@ export default function DoctorDashboardPage() {
   const [troponin, setTroponin] = useState(0.18);
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const session = getActiveHospitalSession();
+    const activeHospId = session?.hospitalId;
+    setHospitalId(activeHospId);
+
+    const hospPatients = loadDirectory().filter((r) => {
+      if (r.category !== "patients") return false;
+      if (!activeHospId) return true;
+      return r.hospitalId === activeHospId;
+    });
+
+    if (hospPatients.length > 0 && !hospPatients.some((p) => p.id === patientId)) {
+      setPatientId(hospPatients[0].id);
+      setPatientName(hospPatients[0].name);
+    }
+  }, []);
 
   const autoPlan = useMemo(
     () =>
@@ -109,7 +128,11 @@ export default function DoctorDashboardPage() {
     <main className="p-6 sm:p-8 max-w-5xl mx-auto space-y-6">
       <div className="glass-panel rounded-2xl p-6 space-y-5">
         <h1 className="text-2xl font-bold text-sky-300">Doctor Triage & Analytical Engine</h1>
-        <CompactPatientBar defaultPatientId={patientId} onSelectPatient={handlePatientSelect} />
+        <CompactPatientBar
+          hospitalId={hospitalId}
+          defaultPatientId={patientId}
+          onSelectPatient={handlePatientSelect}
+        />
 
         <form onSubmit={runAssessment} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
           <input value={patientName} onChange={(e) => setPatientName(e.target.value)} placeholder="Patient Name" className="glass-input rounded-xl px-3.5 py-2.5 text-sm text-white outline-none" />
@@ -160,7 +183,7 @@ export default function DoctorDashboardPage() {
                   onClick={() => toggleMedication(med)}
                   className={`px-3 py-1.5 rounded-xl text-xs border transition text-left ${
                     active
-                      ? "bg-teal-400/20 border-teal-300 text-teal-100 font-semibold"
+                      ? "bg-teal-400/35 border-teal-600 text-teal-950 font-semibold"
                       : "bg-white/5 border-white/15 text-slate-300"
                   }`}
                 >
@@ -201,16 +224,42 @@ export default function DoctorDashboardPage() {
       </div>
 
       {result && (
-        <div className="glass-panel rounded-2xl p-6 space-y-2 text-sm">
-          <p className="font-bold text-base text-white">
-            Triage Tier:{" "}
-            <span className="text-sky-300">
-              {result.analysis?.triage_tier || result.triage_tier || "Evaluated"}
-            </span>
-          </p>
-          <pre className="text-xs text-slate-200 overflow-x-auto bg-slate-950/40 p-4 rounded-xl border border-white/10">
-            {JSON.stringify(result, null, 2)}
-          </pre>
+        <div className="glass-panel rounded-2xl p-6 space-y-4 text-sm">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="font-bold text-base text-white">
+              Triage Tier:{" "}
+              <span className="text-rose-600 font-extrabold">
+                {result.analysis?.triage_tier || result.triage_tier || "Evaluated"}
+              </span>
+            </p>
+            {(result.analysis?.recommended_bed || result.recommended_bed || result.routing?.bed) && (
+              <span className="px-3 py-1 rounded-lg bg-sky-500/15 border border-sky-400/30 text-sky-700 text-xs font-semibold">
+                Bed: {result.analysis?.recommended_bed || result.recommended_bed || result.routing?.bed}
+              </span>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+            <div className="glass-card rounded-xl p-3.5 space-y-1">
+              <p className="font-semibold text-slate-500 uppercase">Patient & Vitals</p>
+              <p className="text-white font-medium">
+                {patientName} ({patientId.toUpperCase()}) • Age {age}
+              </p>
+              <p className="text-slate-300">
+                HR: {hr} bpm • SBP: {sbp} mmHg • SpO2: {spo2}% • Troponin: {troponin}
+              </p>
+            </div>
+
+            <div className="glass-card rounded-xl p-3.5 space-y-1">
+              <p className="font-semibold text-slate-500 uppercase">Clinical Summary</p>
+              <p className="text-slate-200">
+                {result.analysis?.summary ||
+                  result.analysis?.reason ||
+                  result.summary ||
+                  "Immediate clinical attention and continuous vitals monitoring advised."}
+              </p>
+            </div>
+          </div>
         </div>
       )}
     </main>
