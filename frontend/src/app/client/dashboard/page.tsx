@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { API_BASE_URL } from "@/lib/api";
 import CompactPatientBar from "@/components/CompactPatientBar";
@@ -25,6 +25,7 @@ export default function ClientDashboardPage() {
   const [hospitals, setHospitals] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<DirectoryCategory>("doctors");
   const [records, setRecords] = useState<DirectoryRecord[]>([]);
+  const [selectedPatientId, setSelectedPatientId] = useState("");
 
   const [customId, setCustomId] = useState("");
   const [name, setName] = useState("");
@@ -47,6 +48,25 @@ export default function ClientDashboardPage() {
       .then(setHospitals)
       .catch(() => {});
   }, [router]);
+
+  const hospitalPatients = useMemo(() => {
+    if (!hospital) return [];
+    return records.filter(
+      (r) => r.category === "patients" && r.hospitalId === hospital.hospitalId
+    );
+  }, [records, hospital]);
+
+  useEffect(() => {
+    if (!hospital) return;
+    if (hospitalPatients.length === 0) {
+      setSelectedPatientId("");
+      return;
+    }
+    const existsInHospital = hospitalPatients.some((p) => p.id === selectedPatientId);
+    if (!existsInHospital) {
+      setSelectedPatientId(hospitalPatients[0].id);
+    }
+  }, [hospital, hospitalPatients, selectedPatientId]);
 
   function generateNextId(cat: DirectoryCategory) {
     const prefix = TABS.find((t) => t.key === cat)?.prefix || "ID";
@@ -78,7 +98,11 @@ export default function ClientDashboardPage() {
       paidAmount: 0,
     };
     addDirectoryRecord(newRec);
-    setRecords(loadDirectory(true));
+    const updated = loadDirectory(true);
+    setRecords(updated);
+    if (activeTab === "patients") {
+      setSelectedPatientId(assignedId);
+    }
     setIssuedBanner(newRec);
     setCustomId("");
     setName("");
@@ -90,7 +114,9 @@ export default function ClientDashboardPage() {
 
   if (!hospital) return null;
 
-  const filtered = records.filter((r) => r.category === activeTab);
+  const filtered = records.filter(
+    (r) => r.category === activeTab && r.hospitalId === hospital.hospitalId
+  );
 
   return (
     <main className="p-6 sm:p-8 max-w-6xl mx-auto space-y-6">
@@ -126,7 +152,15 @@ export default function ClientDashboardPage() {
           </div>
         </div>
 
-        <CompactPatientBar />
+        <CompactPatientBar
+          hospitalId={hospital.hospitalId}
+          defaultPatientId={
+            hospitalPatients.some((p) => p.id === selectedPatientId)
+              ? selectedPatientId
+              : hospitalPatients[0]?.id || ""
+          }
+          onSelectPatient={(id) => setSelectedPatientId(id)}
+        />
 
         {issuedBanner && (
           <div className="rounded-xl bg-emerald-500/15 border border-emerald-400/35 p-4 text-xs sm:text-sm text-emerald-100">

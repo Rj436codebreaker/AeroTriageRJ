@@ -1,15 +1,17 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { DirectoryRecord, findPatientById, loadDirectory } from "@/lib/directoryStore";
+import { DirectoryRecord, loadDirectory } from "@/lib/directoryStore";
 import { getActiveHospitalSession } from "@/lib/hospitalSession";
 
 interface CompactPatientBarProps {
+  hospitalId?: string;
   defaultPatientId?: string;
   onSelectPatient?: (patientId: string) => void;
 }
 
 export default function CompactPatientBar({
+  hospitalId,
   defaultPatientId = "PT-101",
   onSelectPatient,
 }: CompactPatientBarProps) {
@@ -19,15 +21,15 @@ export default function CompactPatientBar({
 
   useEffect(() => {
     const activeSession = getActiveHospitalSession();
-    const activeHospitalId = activeSession?.hospitalId;
+    const targetHospitalId = hospitalId || activeSession?.hospitalId;
 
     const filtered = loadDirectory().filter((r) => {
       if (r.category !== "patients") return false;
-      if (!activeHospitalId) return true;
+      if (!targetHospitalId) return true;
       const recordHospitalId = (r as DirectoryRecord & { hospitalId?: string; hospital_id?: string })
         .hospitalId ||
         (r as DirectoryRecord & { hospitalId?: string; hospital_id?: string }).hospital_id;
-      return !recordHospitalId || recordHospitalId === activeHospitalId;
+      return recordHospitalId === targetHospitalId;
     });
 
     setPatients(filtered);
@@ -35,8 +37,10 @@ export default function CompactPatientBar({
       const nextId = filtered[0].id;
       setSelectedId(nextId);
       if (onSelectPatient) onSelectPatient(nextId);
+    } else if (filtered.length === 0) {
+      setSelectedId("");
     }
-  }, []);
+  }, [hospitalId]);
 
   useEffect(() => {
     if (defaultPatientId) {
@@ -45,7 +49,7 @@ export default function CompactPatientBar({
   }, [defaultPatientId]);
 
   const activePatient =
-    patients.find((p) => p.id === selectedId) || findPatientById(selectedId) || patients[0];
+    patients.find((p) => p.id === selectedId) || patients[0];
 
   function handleChange(id: string) {
     setSelectedId(id);
