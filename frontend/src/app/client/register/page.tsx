@@ -7,7 +7,6 @@ import {
   loginHospitalServer,
   registerHospitalServer,
 } from "@/lib/hospitalSession";
-import { syncTableRowToSupabase } from "@/lib/supabaseClient";
 
 export default function ClientHospitalRegisterPage() {
   const router = useRouter();
@@ -17,7 +16,7 @@ export default function ClientHospitalRegisterPage() {
   const [serverCode, setServerCode] = useState("HOSP-LKO-04");
   const [password, setPassword] = useState("");
 
-  async function handleRegister(e: React.FormEvent) {
+  function handleRegister(e: React.FormEvent) {
     e.preventDefault();
     const record = {
       hospitalId: hospitalId.trim().toUpperCase(),
@@ -28,15 +27,6 @@ export default function ClientHospitalRegisterPage() {
     };
     registerHospitalServer(record);
     loginHospitalServer(record.serverCode, record.password);
-    await syncTableRowToSupabase("aerotriage_hospitals", {
-      id: record.hospitalId,
-      name: record.hospitalName,
-      address: record.address,
-      server_code: record.serverCode,
-      password_hash: record.password,
-      total_beds: 40,
-      available_beds: 15,
-    });
     router.push("/select-role");
   }
 

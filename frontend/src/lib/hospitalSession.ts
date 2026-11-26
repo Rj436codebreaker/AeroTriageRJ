@@ -1,3 +1,5 @@
+import { syncTableRowToSupabase } from "./supabaseClient";
+
 export interface HospitalServerAccount {
   hospitalId: string;
   hospitalName: string;
@@ -54,6 +56,13 @@ export function registerHospitalServer(account: HospitalServerAccount): Hospital
   if (typeof window !== "undefined") {
     window.localStorage.setItem(HOSPITALS_KEY, JSON.stringify(updated));
   }
+  void syncTableRowToSupabase("aerotriage_hospitals", {
+    id: account.hospitalId,
+    name: account.hospitalName,
+    address: account.address,
+    server_code: account.serverCode,
+    password_hash: account.password,
+  });
   return updated;
 }
 
