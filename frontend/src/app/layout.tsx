@@ -1,10 +1,18 @@
 import "./globals.css";
 import TopUtilityBar from "@/components/TopUtilityBar";
 import FaintingProtocolBanner from "@/components/FaintingProtocolBanner";
+import OwnerConsoleButton from "@/components/OwnerConsoleButton";
 
 export const metadata = {
   title: "AeroTriage | Clinical Decision Support & Emergency Grid",
   description: "Enterprise CDSS & Hospital Routing Network with Fainting First Aid Protocol",
+  icons: {
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+    ],
+    shortcut: "/favicon.svg",
+    apple: "/favicon.svg",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -18,6 +26,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </div>
           <FaintingProtocolBanner />
         </div>
+        <OwnerConsoleButton />
       </body>
     </html>
   );
