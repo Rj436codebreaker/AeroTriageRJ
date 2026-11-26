@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState } from "react";
 import { API_BASE_URL } from "@/lib/api";
-import CompactPatientBar from "@/components/CompactPatientBar";
 import { DirectoryRecord, findPatientById } from "@/lib/directoryStore";
 
 export default function FamilyDashboardPage() {
@@ -13,11 +12,20 @@ export default function FamilyDashboardPage() {
   useEffect(() => {
     const savedId =
       typeof window !== "undefined"
-        ? new URLSearchParams(window.location.search).get("id") ||
-          window.localStorage.getItem("aerotriage_active_patient_id") ||
-          "PT-101"
+        ? (
+            new URLSearchParams(window.location.search).get("id") ||
+            window.localStorage.getItem("aerotriage_active_patient_id") ||
+            "PT-101"
+          )
+            .trim()
+            .toUpperCase()
         : "PT-101";
+
     setPatientId(savedId);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("aerotriage_active_patient_id", savedId);
+    }
+
     fetch(`${API_BASE_URL}/api/family/guidance`)
       .then((r) => (r.ok ? r.json() : null))
       .then(setData)
@@ -25,14 +33,27 @@ export default function FamilyDashboardPage() {
   }, []);
 
   useEffect(() => {
-    setPatient(findPatientById(patientId));
+    const cleanId = patientId.trim().toUpperCase();
+    if (!cleanId) {
+      setPatient(undefined);
+      return;
+    }
+    setPatient(findPatientById(cleanId));
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("aerotriage_active_patient_id", cleanId);
+    }
   }, [patientId]);
 
   return (
     <main className="p-6 sm:p-8 max-w-4xl mx-auto space-y-5">
       <div className="glass-panel rounded-2xl p-6 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <h1 className="text-2xl font-bold text-purple-300">Family Instant ID Portal</h1>
+          <div>
+            <h1 className="text-2xl font-bold text-purple-300">Family Instant ID Portal</h1>
+            <p className="text-xs text-slate-400">
+              Showing isolated status strictly for Patient ID: <span className="font-mono text-white">{patientId || "—"}</span>
+            </p>
+          </div>
           <input
             value={patientId}
             onChange={(e) => setPatientId(e.target.value.toUpperCase())}
@@ -41,18 +62,16 @@ export default function FamilyDashboardPage() {
           />
         </div>
 
-        <CompactPatientBar defaultPatientId={patientId} onSelectPatient={setPatientId} />
-
         <div className="rounded-xl bg-white/5 border border-white/10 p-4 text-xs sm:text-sm space-y-1">
           <p className="font-semibold text-white">
-            Patient: {patient?.name || "Ramesh Kumar"} ({patientId})
+            Patient: {patient?.name || "Record Not Found"} ({patientId || "—"})
           </p>
           <p className="text-slate-300">
-            Status: <strong className="text-emerald-300">{patient?.status || "Active"}</strong> |{" "}
+            Status: <strong className="text-emerald-300">{patient?.status || "Unavailable"}</strong> |{" "}
             Location: <span className="text-white">{patient?.roleOrWard || "Dr. RML Institute (RMLIMS)"}</span>
           </p>
           <p className="text-slate-300">
-            Update: {patient?.latestNotes || "Clinical team monitoring vitals."}
+            Update: {patient?.latestNotes || "Enter a valid Patient ID assigned by the hospital to view live status."}
           </p>
         </div>
 

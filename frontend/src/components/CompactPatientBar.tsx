@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { DirectoryRecord, findPatientById, loadDirectory } from "@/lib/directoryStore";
+import { getActiveHospitalSession } from "@/lib/hospitalSession";
 
 interface CompactPatientBarProps {
   defaultPatientId?: string;
@@ -17,11 +18,34 @@ export default function CompactPatientBar({
   const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
-    const all = loadDirectory().filter((r) => r.category === "patients");
-    setPatients(all);
+    const activeSession = getActiveHospitalSession();
+    const activeHospitalId = activeSession?.hospitalId;
+
+    const filtered = loadDirectory().filter((r) => {
+      if (r.category !== "patients") return false;
+      if (!activeHospitalId) return true;
+      const recordHospitalId = (r as DirectoryRecord & { hospitalId?: string; hospital_id?: string })
+        .hospitalId ||
+        (r as DirectoryRecord & { hospitalId?: string; hospital_id?: string }).hospital_id;
+      return !recordHospitalId || recordHospitalId === activeHospitalId;
+    });
+
+    setPatients(filtered);
+    if (filtered.length > 0 && !filtered.some((p) => p.id === selectedId)) {
+      const nextId = filtered[0].id;
+      setSelectedId(nextId);
+      if (onSelectPatient) onSelectPatient(nextId);
+    }
   }, []);
 
-  const activePatient = findPatientById(selectedId) || patients[0];
+  useEffect(() => {
+    if (defaultPatientId) {
+      setSelectedId(defaultPatientId);
+    }
+  }, [defaultPatientId]);
+
+  const activePatient =
+    patients.find((p) => p.id === selectedId) || findPatientById(selectedId) || patients[0];
 
   function handleChange(id: string) {
     setSelectedId(id);
@@ -44,12 +68,12 @@ export default function CompactPatientBar({
 
         <div className="flex items-center gap-2">
           <select
-            value={selectedId}
+            value={activePatient.id}
             onChange={(e) => handleChange(e.target.value)}
-            className="glass-input rounded-lg px-2 py-1 text-xs text-slate-100 outline-none"
+            className="glass-input rounded-lg px-2 py-1 text-xs font-medium text-slate-900 bg-white outline-none"
           >
             {patients.map((p) => (
-              <option key={p.id} value={p.id} className="bg-slate-900 text-white">
+              <option key={p.id} value={p.id} className="bg-white text-slate-900">
                 {p.id} - {p.name}
               </option>
             ))}
@@ -66,9 +90,15 @@ export default function CompactPatientBar({
 
       {expanded && (
         <div className="mt-2 pt-2 border-t border-white/10 flex flex-wrap gap-4 text-slate-300">
-          <span>Mobile: <strong className="text-white">{activePatient.mobile}</strong></span>
-          <span>Email: <strong className="text-white">{activePatient.email}</strong></span>
-          <span>Notes: <strong className="text-white">{activePatient.latestNotes || "Standard care"}</strong></span>
+          <span>
+            Mobile: <strong className="text-white">{activePatient.mobile}</strong>
+          </span>
+          <span>
+            Email: <strong className="text-white">{activePatient.email}</strong>
+          </span>
+          <span>
+            Notes: <strong className="text-white">{activePatient.latestNotes || "Standard care"}</strong>
+          </span>
         </div>
       )}
     </div>

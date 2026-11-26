@@ -162,3 +162,9 @@ body[data-theme="light-glass"] pre {
   backdrop-filter: blur(10px);
   border: 1px solid rgba(148, 163, 184, 0.22);
 }
+
+select,
+select option {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}

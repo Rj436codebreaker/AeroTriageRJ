@@ -4,6 +4,7 @@ import React, { useMemo, useState } from "react";
 import { API_BASE_URL } from "@/lib/api";
 import CompactPatientBar from "@/components/CompactPatientBar";
 import { buildClinicalRecommendations, saveCareOrder } from "@/lib/careOrdersStore";
+import { findPatientById } from "@/lib/directoryStore";
 
 export default function DoctorDashboardPage() {
   const [patientId, setPatientId] = useState("PT-101");
@@ -31,6 +32,14 @@ export default function DoctorDashboardPage() {
   const [selectedMeds, setSelectedMeds] = useState<string[]>([]);
   const [customMed, setCustomMed] = useState("");
   const [sentBanner, setSentBanner] = useState("");
+
+  function handlePatientSelect(id: string) {
+    setPatientId(id);
+    const found = findPatientById(id);
+    if (found?.name) {
+      setPatientName(found.name);
+    }
+  }
 
   function syncPlanFromVitals(nextPlan = autoPlan) {
     setNurseNote(nextPlan.nurseInstruction);
@@ -100,7 +109,7 @@ export default function DoctorDashboardPage() {
     <main className="p-6 sm:p-8 max-w-5xl mx-auto space-y-6">
       <div className="glass-panel rounded-2xl p-6 space-y-5">
         <h1 className="text-2xl font-bold text-sky-300">Doctor Triage & Analytical Engine</h1>
-        <CompactPatientBar defaultPatientId={patientId} onSelectPatient={setPatientId} />
+        <CompactPatientBar defaultPatientId={patientId} onSelectPatient={handlePatientSelect} />
 
         <form onSubmit={runAssessment} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
           <input value={patientName} onChange={(e) => setPatientName(e.target.value)} placeholder="Patient Name" className="glass-input rounded-xl px-3.5 py-2.5 text-sm text-white outline-none" />
